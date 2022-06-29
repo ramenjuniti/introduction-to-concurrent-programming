@@ -14,6 +14,8 @@ fn main() {
     let listener = TcpListener::bind("127.0.0.1:10000").unwrap();
 
     let epfd = epoll_create1(EpollCreateFlags::empty()).unwrap();
+
+    let listen_fd = listener.as_raw_fd();
     let mut ev = EpollEvent::new(epoll_in, listen_fd as u64);
     epoll_ctl(epfd, epoll_add, listen_fd, &mut ev).unwrap();
 
@@ -26,7 +28,7 @@ fn main() {
                 if let Ok((stream, _)) = listener.accept() {
                     let fd = stream.as_raw_fd();
                     let stream0 = stream.try_clone().unwrap();
-                    let reader = BufReader::new(stream);
+                    let reader = BufReader::new(stream0);
                     let writer = BufWriter::new(stream);
 
                     fd2buf.insert(fd, (reader, writer));
@@ -34,10 +36,10 @@ fn main() {
                     println!("accept: fd = {}", fd);
 
                     let mut ev = EpollEvent::new(epoll_in, fd as u64);
-                    epoll_ctl(epfd, epoll_add, fd, &mut ev).unwrap;
+                    epoll_ctl(epfd, epoll_add, fd, &mut ev).unwrap();
                 }
             } else {
-                let fd = events[n].date() as RawFd;
+                let fd = events[n].data() as RawFd;
                 let (reader, writer) = fd2buf.get_mut(&fd).unwrap();
 
                 let mut buf = String::new();
